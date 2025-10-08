@@ -25,12 +25,19 @@ export class AdminController {
       this.deliveryService.findAll(),
     ]);
 
-    const customers = users.filter(user => user.role === UserRole.CUSTOMER);
-    const drivers = users.filter(user => user.role === UserRole.DRIVER);
-    const successfulPayments = payments.filter(payment => payment.status === PaymentStatus.SUCCESSFUL);
-    const pendingDeliveries = deliveries.filter(delivery => delivery.status === DeliveryStatus.PENDING);
+    const customers = users.filter((user) => user.role === UserRole.CUSTOMER);
+    const drivers = users.filter((user) => user.role === UserRole.DRIVER);
+    const successfulPayments = payments.filter(
+      (payment) => payment.status === PaymentStatus.SUCCESSFUL,
+    );
+    const pendingDeliveries = deliveries.filter(
+      (delivery) => delivery.status === DeliveryStatus.PENDING,
+    );
 
-    const totalRevenue = successfulPayments.reduce((sum, payment) => sum + payment.amount, 0);
+    const totalRevenue = successfulPayments.reduce(
+      (sum, payment) => sum + payment.amount,
+      0,
+    );
 
     return {
       stats: {
@@ -47,12 +54,15 @@ export class AdminController {
   }
 
   @Get('orders/analytics')
-  async getOrderAnalytics(@Query('startDate') startDate: string, @Query('endDate') endDate: string) {
+  async getOrderAnalytics(
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+  ) {
     const start = new Date(startDate);
     const end = new Date(endDate);
-    
+
     const orders = await this.orderService.getOrdersByDateRange(start, end);
-    
+
     // Group orders by cylinder size
     const cylinderSizeStats = orders.reduce((acc, order) => {
       acc[order.cylinderSize] = (acc[order.cylinderSize] || 0) + 1;
@@ -77,19 +87,19 @@ export class AdminController {
   @Get('users/customers')
   async getCustomers() {
     const users = await this.userService.findAll();
-    return users.filter(user => user.role === UserRole.CUSTOMER);
+    return users.filter((user) => user.role === UserRole.CUSTOMER);
   }
 
   @Get('users/drivers')
   async getDrivers() {
     const users = await this.userService.findAll();
-    return users.filter(user => user.role === UserRole.DRIVER);
+    return users.filter((user) => user.role === UserRole.DRIVER);
   }
 
   @Get('payments/analytics')
   async getPaymentAnalytics() {
     const payments = await this.paymentService.findAll();
-    
+
     const statusStats = payments.reduce((acc, payment) => {
       acc[payment.status] = (acc[payment.status] || 0) + 1;
       return acc;
@@ -101,7 +111,7 @@ export class AdminController {
     }, {});
 
     const totalRevenue = payments
-      .filter(payment => payment.status === PaymentStatus.SUCCESSFUL)
+      .filter((payment) => payment.status === PaymentStatus.SUCCESSFUL)
       .reduce((sum, payment) => sum + payment.amount, 0);
 
     return {
@@ -116,7 +126,7 @@ export class AdminController {
   @Get('deliveries/analytics')
   async getDeliveryAnalytics() {
     const deliveries = await this.deliveryService.findAll();
-    
+
     const statusStats = deliveries.reduce((acc, delivery) => {
       acc[delivery.status] = (acc[delivery.status] || 0) + 1;
       return acc;
@@ -144,4 +154,4 @@ export class AdminController {
       deliveries,
     };
   }
-} 
+}

@@ -12,4 +12,4 @@ export class Notification {
   scheduledAt?: Date;
   sent: boolean;
   meta?: any;
-} 
+}

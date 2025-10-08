@@ -4,8 +4,11 @@ import { Document } from 'mongoose';
 export enum OrderStatus {
   PENDING = 'pending',
   CONFIRMED = 'confirmed',
+  PROCESSING = 'processing',
+  IN_TRANSIT = 'in_transit',
   DELIVERED = 'delivered',
   CANCELLED = 'cancelled',
+  PAYMENT_FAILED = 'payment_failed',
 }
 
 @Schema({ timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } })

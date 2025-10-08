@@ -5,9 +5,13 @@ import { CylinderService } from './cylinder.service';
 import { CylinderController } from './cylinder.controller';
 
 @Module({
-  imports: [MongooseModule.forFeature([{ name: Cylinder.name, schema: CylinderSchema }])],
+  imports: [
+    MongooseModule.forFeature([
+      { name: Cylinder.name, schema: CylinderSchema },
+    ]),
+  ],
   controllers: [CylinderController],
   providers: [CylinderService],
   exports: [CylinderService],
 })
-export class CylinderModule {} 
+export class CylinderModule {}

@@ -1,4 +1,8 @@
-import { PaymentStatus, PaymentProvider, PaymentMethod } from '../payment.schema';
+import {
+  PaymentStatus,
+  PaymentProvider,
+  PaymentMethod,
+} from '../payment.schema';
 
 export class Payment {
   id: string;
@@ -19,4 +23,4 @@ export class Payment {
   webhookData?: Record<string, any>;
   createdAt: Date;
   updatedAt: Date;
-} 
+}

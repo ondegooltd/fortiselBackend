@@ -1,4 +1,10 @@
-import { IsString, IsNumber, IsOptional, IsMongoId, IsDateString } from 'class-validator';
+import {
+  IsString,
+  IsNumber,
+  IsOptional,
+  IsMongoId,
+  IsDateString,
+} from 'class-validator';
 
 export class CreateDeliveryDto {
   @IsMongoId()
@@ -43,4 +49,4 @@ export class CreateDeliveryDto {
     pickup: { lat: number; lng: number };
     dropoff: { lat: number; lng: number };
   };
-} 
+}

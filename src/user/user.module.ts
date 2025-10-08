@@ -1,24 +1,42 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { JwtModule } from '@nestjs/jwt';
+import { PassportModule } from '@nestjs/passport';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { UserService } from './user.service';
 import { UserController } from './user.controller';
 import { User, UserSchema } from './user.schema';
-import { JwtModule } from '@nestjs/jwt';
-import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from './jwt.strategy';
 import { GoogleStrategy } from './google.strategy';
+import { EmailService } from '../common/services/email.service';
+import { SmsService } from '../common/services/sms.service';
+import { LoggerService } from '../common/services/logger.service';
 
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
     PassportModule,
-    JwtModule.register({
-      secret: process.env.JWT_SECRET || 'your-secret-key',
-      signOptions: { expiresIn: process.env.JWT_EXPIRES_IN || '24h' },
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        secret: configService.get<string>('jwt.secret'),
+        signOptions: {
+          expiresIn: configService.get<string>('jwt.expiresIn'),
+        },
+      }),
+      inject: [ConfigService],
     }),
   ],
   controllers: [UserController],
-  providers: [UserService, UserController, JwtStrategy, GoogleStrategy],
-  exports: [UserService],
+  providers: [
+    UserService,
+    UserController,
+    JwtStrategy,
+    GoogleStrategy,
+    EmailService,
+    SmsService,
+    LoggerService,
+  ],
+  exports: [UserService, EmailService, SmsService],
 })
-export class UserModule {} 
+export class UserModule {}

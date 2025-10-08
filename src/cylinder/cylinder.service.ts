@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Cylinder, CylinderDocument } from './cylinder.schema';
@@ -13,7 +17,9 @@ export class CylinderService {
 
   async create(createCylinderDto: CreateCylinderDto): Promise<Cylinder> {
     const { cylinderId, ...rest } = createCylinderDto;
-    const generatedCylinderId = cylinderId || `CYLINDER-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+    const generatedCylinderId =
+      cylinderId ||
+      `CYLINDER-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
     const createdCylinder = new this.cylinderModel({
       ...rest,
       cylinderId: generatedCylinderId,
@@ -33,7 +39,10 @@ export class CylinderService {
     return cylinder;
   }
 
-  async update(id: string, updateCylinderDto: UpdateCylinderDto): Promise<Cylinder> {
+  async update(
+    id: string,
+    updateCylinderDto: UpdateCylinderDto,
+  ): Promise<Cylinder> {
     const updatedCylinder = await this.cylinderModel
       .findByIdAndUpdate(id, updateCylinderDto, { new: true })
       .exec();
@@ -53,4 +62,4 @@ export class CylinderService {
   async findBySize(size: string): Promise<Cylinder[]> {
     return this.cylinderModel.find({ size }).exec();
   }
-} 
+}

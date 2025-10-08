@@ -29,4 +29,4 @@ export class Cylinder extends Document {
 }
 
 export const CylinderSchema = SchemaFactory.createForClass(Cylinder);
-export type CylinderDocument = Cylinder & Document; 
+export type CylinderDocument = Cylinder & Document;

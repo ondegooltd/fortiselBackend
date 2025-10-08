@@ -46,7 +46,10 @@ export class DeliveryService {
     return this.deliveryModel.find({ status }).exec();
   }
 
-  async update(id: string, updateDeliveryDto: UpdateDeliveryDto): Promise<Delivery> {
+  async update(
+    id: string,
+    updateDeliveryDto: UpdateDeliveryDto,
+  ): Promise<Delivery> {
     const updatedDelivery = await this.deliveryModel
       .findByIdAndUpdate(id, updateDeliveryDto, { new: true })
       .exec();
@@ -60,7 +63,7 @@ export class DeliveryService {
 
   async updateStatus(id: string, status: DeliveryStatus): Promise<Delivery> {
     const updateData: any = { status };
-    
+
     // Update timestamps based on status
     switch (status) {
       case DeliveryStatus.PICKED_UP:
@@ -86,11 +89,11 @@ export class DeliveryService {
     const updatedDelivery = await this.deliveryModel
       .findByIdAndUpdate(
         id,
-        { 
+        {
           driverId,
           status: DeliveryStatus.ASSIGNED,
         },
-        { new: true }
+        { new: true },
       )
       .exec();
 
@@ -115,4 +118,4 @@ export class DeliveryService {
   async getDriverDeliveries(driverId: string): Promise<Delivery[]> {
     return this.deliveryModel.find({ driverId }).exec();
   }
-} 
+}

@@ -21,7 +21,11 @@ export class SupportTicket extends Document {
   @Prop({ required: true })
   message: string;
 
-  @Prop({ type: String, enum: SupportTicketStatus, default: SupportTicketStatus.OPEN })
+  @Prop({
+    type: String,
+    enum: SupportTicketStatus,
+    default: SupportTicketStatus.OPEN,
+  })
   status: SupportTicketStatus;
 
   @Prop({ default: Date.now })
@@ -29,4 +33,4 @@ export class SupportTicket extends Document {
 }
 
 export const SupportTicketSchema = SchemaFactory.createForClass(SupportTicket);
-export type SupportTicketDocument = SupportTicket & Document; 
+export type SupportTicketDocument = SupportTicket & Document;

@@ -1,4 +1,10 @@
-import { IsString, IsOptional, IsBoolean, IsDate, IsObject } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsBoolean,
+  IsDate,
+  IsObject,
+} from 'class-validator';
 
 export class CreateNotificationDto {
   @IsString()
@@ -45,4 +51,4 @@ export class CreateNotificationDto {
   @IsObject()
   @IsOptional()
   meta?: any;
-} 
+}

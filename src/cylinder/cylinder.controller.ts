@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
 import { CylinderService } from './cylinder.service';
 import { CreateCylinderDto } from './dto/create-cylinder.dto';
 import { UpdateCylinderDto } from './dto/update-cylinder.dto';
@@ -28,7 +36,10 @@ export class CylinderController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateCylinderDto: UpdateCylinderDto) {
+  update(
+    @Param('id') id: string,
+    @Body() updateCylinderDto: UpdateCylinderDto,
+  ) {
     return this.cylinderService.update(id, updateCylinderDto);
   }
 
@@ -36,4 +47,4 @@ export class CylinderController {
   remove(@Param('id') id: string) {
     return this.cylinderService.remove(id);
   }
-} 
+}

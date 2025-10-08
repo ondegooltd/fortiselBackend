@@ -1,4 +1,8 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -6,11 +10,15 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { User, UserDocument, OtpDeliveryMethod } from './user.schema';
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
+import { EmailService } from '../common/services/email.service';
+import { SmsService } from '../common/services/sms.service';
 
 @Injectable()
 export class UserService {
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
+    private emailService: EmailService,
+    private smsService: SmsService,
   ) {}
 
   async create(createUserDto: CreateUserDto): Promise<User> {
@@ -25,7 +33,9 @@ export class UserService {
       ],
     });
     if (existingUser) {
-      throw new ConflictException('User with this email, phone, or userId already exists');
+      throw new ConflictException(
+        'User with this email, phone, or userId already exists',
+      );
     }
 
     // Hash password
@@ -33,7 +43,8 @@ export class UserService {
     const passwordHash = await bcrypt.hash(password, saltRounds);
 
     // Auto-generate userId if not provided
-    const generatedUserId = userId || `USER-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+    const generatedUserId =
+      userId || `USER-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
 
     // Set isActive and isEmailVerified to false until OTP is verified
     const createdUser = new this.userModel({
@@ -49,7 +60,8 @@ export class UserService {
     const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
     createdUser.otp = otp;
     createdUser.otpExpiresAt = otpExpiresAt;
-    createdUser.otpDeliveryMethod = createUserDto.otpDeliveryMethod || OtpDeliveryMethod.SMS;
+    createdUser.otpDeliveryMethod =
+      createUserDto.otpDeliveryMethod || OtpDeliveryMethod.SMS;
     await createdUser.save();
     if (createdUser.otpDeliveryMethod === OtpDeliveryMethod.EMAIL) {
       await this.sendOtpEmail(createdUser.email, otp);
@@ -64,7 +76,10 @@ export class UserService {
   }
 
   async findOne(id: string): Promise<User> {
-    const user = await this.userModel.findById(id).select('-passwordHash').exec();
+    const user = await this.userModel
+      .findById(id)
+      .select('-passwordHash')
+      .exec();
     if (!user) {
       throw new NotFoundException('User not found');
     }
@@ -97,27 +112,6 @@ export class UserService {
 
   async findByGoogleId(googleId: string) {
     return this.userModel.findOne({ googleId }).exec();
-  }
-
-  async createWithGoogle(data: {
-    name: string;
-    email: string;
-    googleId: string;
-    profilePicture?: string;
-    authProvider: string;
-    isEmailVerified?: boolean;
-  }) {
-    const user = new this.userModel({
-      userId: `USER-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
-      name: data.name,
-      email: data.email,
-      googleId: data.googleId,
-      profilePicture: data.profilePicture,
-      authProvider: data.authProvider,
-      isEmailVerified: data.isEmailVerified ?? true,
-      isActive: true,
-    });
-    return user.save();
   }
 
   async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
@@ -161,23 +155,40 @@ export class UserService {
 
   // Generate a 6-digit OTP
   generateOtp(): string {
-    return (Math.floor(100000 + Math.random() * 900000)).toString();
+    return Math.floor(100000 + Math.random() * 900000).toString();
   }
 
-  // Placeholder for sending OTP via email
+  // Send OTP via email using Resend
   async sendOtpEmail(email: string, otp: string): Promise<void> {
-    // TODO: Integrate with real email service
-    console.log(`Send OTP ${otp} to email: ${email}`);
+    try {
+      const result = await this.emailService.sendOtpEmail(email, otp);
+      if (!result.success) {
+        throw new Error(`Failed to send OTP email: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error sending OTP email:', error);
+      throw error;
+    }
   }
 
-  // Placeholder for sending OTP via SMS
+  // Send OTP via SMS using Twilio
   async sendOtpSms(phone: string, otp: string): Promise<void> {
-    // TODO: Integrate with real SMS service
-    console.log(`Send OTP ${otp} to phone: ${phone}`);
+    try {
+      const result = await this.smsService.sendOtpSms(phone, otp);
+      if (!result.success) {
+        throw new Error(`Failed to send OTP SMS: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error sending OTP SMS:', error);
+      throw error;
+    }
   }
 
   // Request OTP for signup or password reset
-  async requestOtp(identifier: { email?: string; phone?: string }, otpDeliveryMethod: OtpDeliveryMethod): Promise<{ message: string }> {
+  async requestOtp(
+    identifier: { email?: string; phone?: string },
+    otpDeliveryMethod: OtpDeliveryMethod,
+  ): Promise<{ message: string }> {
     let user: UserDocument | null = null;
     if (identifier.email) {
       user = await this.userModel.findOne({ email: identifier.email });
@@ -202,7 +213,10 @@ export class UserService {
   }
 
   // Activate user after successful OTP verification
-  async activateUserAfterOtp(identifier: { email?: string; phone?: string }): Promise<{ message: string }> {
+  async activateUserAfterOtp(identifier: {
+    email?: string;
+    phone?: string;
+  }): Promise<{ message: string }> {
     let user: UserDocument | null = null;
     if (identifier.email) {
       user = await this.userModel.findOne({ email: identifier.email });
@@ -219,7 +233,10 @@ export class UserService {
   }
 
   // Verify OTP for signup or password reset
-  async verifyOtp(identifier: { email?: string; phone?: string }, otp: string): Promise<{ valid: boolean; message: string }> {
+  async verifyOtp(
+    identifier: { email?: string; phone?: string },
+    otp: string,
+  ): Promise<{ valid: boolean; message: string }> {
     let user: UserDocument | null = null;
     if (identifier.email) {
       user = await this.userModel.findOne({ email: identifier.email });
@@ -248,7 +265,10 @@ export class UserService {
   }
 
   // Request password reset (generates and sends OTP)
-  async requestPasswordReset(identifier: { email?: string; phone?: string }, otpDeliveryMethod: OtpDeliveryMethod): Promise<{ message: string }> {
+  async requestPasswordReset(
+    identifier: { email?: string; phone?: string },
+    otpDeliveryMethod: OtpDeliveryMethod,
+  ): Promise<{ message: string }> {
     let user: UserDocument | null = null;
     if (identifier.email) {
       user = await this.userModel.findOne({ email: identifier.email });
@@ -273,7 +293,10 @@ export class UserService {
   }
 
   // Verify OTP for password reset
-  async verifyPasswordResetOtp(identifier: { email?: string; phone?: string }, otp: string): Promise<{ valid: boolean; message: string }> {
+  async verifyPasswordResetOtp(
+    identifier: { email?: string; phone?: string },
+    otp: string,
+  ): Promise<{ valid: boolean; message: string }> {
     let user: UserDocument | null = null;
     if (identifier.email) {
       user = await this.userModel.findOne({ email: identifier.email });
@@ -296,11 +319,17 @@ export class UserService {
     user.otp = undefined;
     user.otpExpiresAt = undefined;
     await user.save();
-    return { valid: true, message: 'OTP verified. You may now reset your password.' };
+    return {
+      valid: true,
+      message: 'OTP verified. You may now reset your password.',
+    };
   }
 
   // Reset password after OTP verification
-  async resetPassword(identifier: { email?: string; phone?: string }, newPassword: string): Promise<{ message: string }> {
+  async resetPassword(
+    identifier: { email?: string; phone?: string },
+    newPassword: string,
+  ): Promise<{ message: string }> {
     let user: UserDocument | null = null;
     if (identifier.email) {
       user = await this.userModel.findOne({ email: identifier.email });
@@ -316,4 +345,53 @@ export class UserService {
     await user.save();
     return { message: 'Password reset successful' };
   }
-} 
+
+  /**
+   * Create user with Google OAuth
+   */
+  async createWithGoogle(userData: {
+    name: string;
+    email: string;
+    googleId: string;
+    profilePicture?: string;
+    authProvider: any;
+    isEmailVerified: boolean;
+  }): Promise<User> {
+    const {
+      name,
+      email,
+      googleId,
+      profilePicture,
+      authProvider,
+      isEmailVerified,
+    } = userData;
+
+    // Check if user already exists with this email
+    const existingUser = await this.userModel.findOne({ email }).exec();
+    if (existingUser) {
+      // Update existing user with Google ID
+      existingUser.googleId = googleId;
+      existingUser.authProvider = authProvider;
+      existingUser.profilePicture = profilePicture;
+      existingUser.isEmailVerified = isEmailVerified;
+      return existingUser.save();
+    }
+
+    // Create new user
+    const userId = `USER-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+    const newUser = new this.userModel({
+      userId,
+      name,
+      email,
+      googleId,
+      profilePicture,
+      authProvider,
+      isEmailVerified,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    return newUser.save();
+  }
+}

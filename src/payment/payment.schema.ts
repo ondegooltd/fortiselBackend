@@ -7,6 +7,7 @@ export enum PaymentStatus {
   SUCCESSFUL = 'successful',
   FAILED = 'failed',
   CANCELLED = 'cancelled',
+  REVERSED = 'reversed',
 }
 
 export enum PaymentProvider {
@@ -76,4 +77,4 @@ export class Payment extends Document {
 }
 
 export const PaymentSchema = SchemaFactory.createForClass(Payment);
-export type PaymentDocument = Payment & Document; 
+export type PaymentDocument = Payment & Document;

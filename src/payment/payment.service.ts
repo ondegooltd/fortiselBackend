@@ -47,7 +47,10 @@ export class PaymentService {
     return this.paymentModel.find({ status }).exec();
   }
 
-  async update(id: string, updatePaymentDto: UpdatePaymentDto): Promise<Payment> {
+  async update(
+    id: string,
+    updatePaymentDto: UpdatePaymentDto,
+  ): Promise<Payment> {
     const updatedPayment = await this.paymentModel
       .findByIdAndUpdate(
         id,
@@ -61,13 +64,17 @@ export class PaymentService {
     return updatedPayment;
   }
 
-  async updateStatus(id: string, status: PaymentStatus, metadata?: any): Promise<Payment> {
+  async updateStatus(
+    id: string,
+    status: PaymentStatus,
+    metadata?: any,
+  ): Promise<Payment> {
     const updateData: any = { status, updatedAt: new Date() };
-    
+
     if (status === PaymentStatus.SUCCESSFUL) {
       updateData.processedAt = new Date();
     }
-    
+
     if (metadata) {
       updateData.webhookData = metadata;
     }
@@ -90,8 +97,13 @@ export class PaymentService {
     }
   }
 
-  async processWebhook(providerReference: string, webhookData: any): Promise<Payment> {
-    const payment = await this.paymentModel.findOne({ providerReference }).exec();
+  async processWebhook(
+    providerReference: string,
+    webhookData: any,
+  ): Promise<Payment> {
+    const payment = await this.paymentModel
+      .findOne({ providerReference })
+      .exec();
     if (!payment) {
       throw new NotFoundException('Payment not found');
     }
@@ -101,9 +113,29 @@ export class PaymentService {
     return this.updateStatus(payment.id, status, webhookData);
   }
 
-  private determineStatusFromWebhook(webhookData: any): PaymentStatus {
-    // This would be implemented based on the specific payment provider
-    // For now, return a default status
-    return PaymentStatus.SUCCESSFUL;
+  async findByProviderReference(providerReference: string): Promise<Payment> {
+    const payment = await this.paymentModel
+      .findOne({ providerReference })
+      .exec();
+    if (!payment) {
+      throw new NotFoundException('Payment not found');
+    }
+    return payment;
   }
-} 
+
+  private determineStatusFromWebhook(webhookData: any): PaymentStatus {
+    // Paystack webhook status mapping
+    switch (webhookData.status) {
+      case 'success':
+        return PaymentStatus.SUCCESSFUL;
+      case 'failed':
+        return PaymentStatus.FAILED;
+      case 'pending':
+        return PaymentStatus.PENDING;
+      case 'reversed':
+        return PaymentStatus.REVERSED;
+      default:
+        return PaymentStatus.PENDING;
+    }
+  }
+}

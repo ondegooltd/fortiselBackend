@@ -15,8 +15,10 @@ describe('AppController', () => {
   });
 
   describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World :) :)!');
+    it('should return "Hello World, Welcome to Fortisel LPG API"', () => {
+      expect(appController.getHello()).toBe(
+        'Hello World, Welcome to Fortisel LPG API',
+      );
     });
   });
 });

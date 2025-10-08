@@ -65,4 +65,4 @@ export class Delivery extends Document {
 }
 
 export const DeliverySchema = SchemaFactory.createForClass(Delivery);
-export type DeliveryDocument = Delivery & Document; 
+export type DeliveryDocument = Delivery & Document;

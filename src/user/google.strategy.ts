@@ -1,20 +1,23 @@
 import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy, VerifyCallback } from 'passport-google-oauth20';
+import { ConfigService } from '@nestjs/config';
 import { UserService } from './user.service';
 import { AuthProvider } from './user.schema';
 
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
-  constructor(private readonly userService: UserService) {
+  constructor(
+    private readonly userService: UserService,
+    private readonly configService: ConfigService,
+  ) {
     super({
-      clientID: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:3000/auth/google/callback',
+      clientID: configService.get('google.clientId'),
+      clientSecret: configService.get('google.clientSecret'),
+      callbackURL: configService.get('google.callbackUrl'),
       scope: ['email', 'profile'],
       passReqToCallback: false,
     });
-    console.log('GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID);
   }
 
   async validate(
@@ -28,7 +31,8 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     const email = emails && emails[0]?.value;
     const profilePicture = photos && photos[0]?.value;
     let user: any = await this.userService.findByGoogleId(id);
-    if (user && typeof user.toObject === 'function') user = user.toObject() as any;
+    if (user && typeof user.toObject === 'function')
+      user = user.toObject() as any;
     if (!user && email) {
       user = await this.userService.findByEmail(email);
       if (user) {
@@ -50,8 +54,9 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
         authProvider: AuthProvider.GOOGLE,
         isEmailVerified: true,
       });
-      if (user && typeof user.toObject === 'function') user = user.toObject() as any;
+      if (user && typeof user.toObject === 'function')
+        user = user.toObject() as any;
     }
     done(null, user);
   }
-} 
+}

@@ -17,4 +17,4 @@ export class User {
   refreshToken?: string;
   createdAt: Date;
   updatedAt: Date;
-} 
+}

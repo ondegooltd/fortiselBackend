@@ -53,20 +53,23 @@ export class DeliveryController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateDeliveryDto: UpdateDeliveryDto) {
+  update(
+    @Param('id') id: string,
+    @Body() updateDeliveryDto: UpdateDeliveryDto,
+  ) {
     return this.deliveryService.update(id, updateDeliveryDto);
   }
 
   @Patch(':id/status')
-  updateStatus(@Param('id') id: string, @Body() body: { status: DeliveryStatus }) {
+  updateStatus(
+    @Param('id') id: string,
+    @Body() body: { status: DeliveryStatus },
+  ) {
     return this.deliveryService.updateStatus(id, body.status);
   }
 
   @Patch(':id/assign-driver')
-  assignDriver(
-    @Param('id') id: string,
-    @Body() body: { driverId: string },
-  ) {
+  assignDriver(@Param('id') id: string, @Body() body: { driverId: string }) {
     return this.deliveryService.assignDriver(id, body.driverId);
   }
 
@@ -74,4 +77,4 @@ export class DeliveryController {
   remove(@Param('id') id: string) {
     return this.deliveryService.remove(id);
   }
-} 
+}

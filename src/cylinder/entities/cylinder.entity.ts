@@ -7,4 +7,4 @@ export class Cylinder {
   deliveryFee: number;
   description: string;
   createdAt: Date;
-} 
+}

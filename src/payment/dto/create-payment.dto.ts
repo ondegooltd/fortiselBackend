@@ -1,4 +1,10 @@
-import { IsString, IsNumber, IsEnum, IsOptional, IsMongoId } from 'class-validator';
+import {
+  IsString,
+  IsNumber,
+  IsEnum,
+  IsOptional,
+  IsMongoId,
+} from 'class-validator';
 import { PaymentProvider, PaymentMethod } from '../payment.schema';
 
 export class CreatePaymentDto {
@@ -32,4 +38,4 @@ export class CreatePaymentDto {
 
   @IsOptional()
   updatedAt?: Date;
-} 
+}

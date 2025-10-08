@@ -22,4 +22,4 @@ export class CreateSupportTicketDto {
 
   @IsOptional()
   createdAt?: Date;
-} 
+}

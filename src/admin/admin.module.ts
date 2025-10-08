@@ -9,4 +9,4 @@ import { DeliveryModule } from '../delivery/delivery.module';
   imports: [OrderModule, UserModule, PaymentModule, DeliveryModule],
   controllers: [AdminController],
 })
-export class AdminModule {} 
+export class AdminModule {}

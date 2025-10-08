@@ -23,4 +23,4 @@ export class Delivery {
   };
   createdAt: Date;
   updatedAt: Date;
-} 
+}

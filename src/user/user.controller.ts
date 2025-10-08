@@ -13,6 +13,7 @@ import {
   Req,
   ValidationPipe,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -98,10 +99,12 @@ export class UserController {
   ) {}
 
   @Post()
+  @Throttle({ short: { limit: 5, ttl: 60000 } }) // 5 registrations per minute
   async create(@Body() createUserDto: CreateUserDto) {
     const user = await this.userService.create(createUserDto);
     return {
-      message: 'Signup successful. Please verify the OTP sent to your email or phone to activate your account.',
+      message:
+        'Signup successful. Please verify the OTP sent to your email or phone to activate your account.',
       user: {
         id: user.id,
         userId: user.userId,
@@ -117,6 +120,7 @@ export class UserController {
   }
 
   @Post('login')
+  @Throttle({ short: { limit: 5, ttl: 300000 } }) // 5 login attempts per 5 minutes
   async login(@Body() loginDto: LoginDto) {
     let user;
     if (loginDto.email) {
@@ -126,9 +130,14 @@ export class UserController {
     } else if (loginDto.userId) {
       user = await this.userService.findByUserId(loginDto.userId);
     } else {
-      throw new BadRequestException('Please provide email, phone, or userId to login.');
+      throw new BadRequestException(
+        'Please provide email, phone, or userId to login.',
+      );
     }
-    const isValidPassword = await this.userService.validatePassword(user, loginDto.password);
+    const isValidPassword = await this.userService.validatePassword(
+      user,
+      loginDto.password,
+    );
     if (!isValidPassword) {
       throw new BadRequestException('Invalid credentials');
     }
@@ -165,6 +174,7 @@ export class UserController {
   }
 
   @Post('request-otp')
+  @Throttle({ short: { limit: 3, ttl: 300000 } }) // 3 OTP requests per 5 minutes
   async requestOtp(@Body(new ValidationPipe()) body: RequestOtpDto) {
     const { email, phone, otpDeliveryMethod } = body;
     if (!email && !phone) {
@@ -183,16 +193,24 @@ export class UserController {
   }
 
   @Post('request-password-reset')
-  async requestPasswordReset(@Body(new ValidationPipe()) body: RequestPasswordResetDto) {
+  @Throttle({ short: { limit: 3, ttl: 300000 } }) // 3 password reset requests per 5 minutes
+  async requestPasswordReset(
+    @Body(new ValidationPipe()) body: RequestPasswordResetDto,
+  ) {
     const { email, phone, otpDeliveryMethod } = body;
     if (!email && !phone) {
       throw new BadRequestException('Provide either email or phone');
     }
-    return this.userService.requestPasswordReset({ email, phone }, otpDeliveryMethod);
+    return this.userService.requestPasswordReset(
+      { email, phone },
+      otpDeliveryMethod,
+    );
   }
 
   @Post('verify-password-reset-otp')
-  async verifyPasswordResetOtp(@Body(new ValidationPipe()) body: VerifyPasswordResetOtpDto) {
+  async verifyPasswordResetOtp(
+    @Body(new ValidationPipe()) body: VerifyPasswordResetOtpDto,
+  ) {
     const { email, phone, otp } = body;
     if (!email && !phone) {
       throw new BadRequestException('Provide either email or phone');
@@ -271,4 +289,4 @@ export class UserController {
       },
     });
   }
-} 
+}

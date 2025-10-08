@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Notification, NotificationDocument } from './notification.schema';
@@ -8,12 +12,17 @@ import { UpdateNotificationDto } from './dto/update-notification.dto';
 @Injectable()
 export class NotificationService {
   constructor(
-    @InjectModel(Notification.name) private notificationModel: Model<NotificationDocument>,
+    @InjectModel(Notification.name)
+    private notificationModel: Model<NotificationDocument>,
   ) {}
 
-  async create(createNotificationDto: CreateNotificationDto): Promise<Notification> {
+  async create(
+    createNotificationDto: CreateNotificationDto,
+  ): Promise<Notification> {
     const { notificationId, ...rest } = createNotificationDto;
-    const generatedNotificationId = notificationId || `NOTIF-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+    const generatedNotificationId =
+      notificationId ||
+      `NOTIF-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
     const createdNotification = new this.notificationModel({
       ...rest,
       notificationId: generatedNotificationId,
@@ -33,7 +42,10 @@ export class NotificationService {
     return notification;
   }
 
-  async update(id: string, updateDto: UpdateNotificationDto): Promise<Notification> {
+  async update(
+    id: string,
+    updateDto: UpdateNotificationDto,
+  ): Promise<Notification> {
     const updatedNotification = await this.notificationModel
       .findByIdAndUpdate(id, updateDto, { new: true })
       .exec();
@@ -49,4 +61,4 @@ export class NotificationService {
       throw new NotFoundException('Notification not found');
     }
   }
-} 
+}

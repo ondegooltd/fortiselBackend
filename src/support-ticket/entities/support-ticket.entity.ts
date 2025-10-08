@@ -8,4 +8,4 @@ export class SupportTicket {
   message: string;
   status: SupportTicketStatus;
   createdAt: Date;
-} 
+}
