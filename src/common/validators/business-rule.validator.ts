@@ -72,10 +72,10 @@ export class BusinessRuleValidator {
       }
 
       // 3. Validate cylinder availability
+      // Cylinder size now matches between order and cylinder schemas
       const availableCylinders = await this.cylinderModel
         .countDocuments({
           size: context.cylinderSize,
-          status: 'AVAILABLE',
         })
         .exec();
 

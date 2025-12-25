@@ -17,6 +17,9 @@ export class Order extends Document {
   orderId: string;
 
   @Prop({ required: true })
+  userId: string;
+
+  @Prop({ required: true })
   cylinderSize: string;
 
   @Prop({ required: true })

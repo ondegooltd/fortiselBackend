@@ -6,15 +6,18 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { UserService } from './user.service';
 import { UserController } from './user.controller';
 import { User, UserSchema } from './user.schema';
+import { Order, OrderSchema } from '../order/order.schema';
 import { JwtStrategy } from './jwt.strategy';
 import { GoogleStrategy } from './google.strategy';
-import { EmailService } from '../common/services/email.service';
-import { SmsService } from '../common/services/sms.service';
-import { LoggerService } from '../common/services/logger.service';
+import { SharedServicesModule } from '../common/modules/shared-services.module';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
+    SharedServicesModule,
+    MongooseModule.forFeature([
+      { name: User.name, schema: UserSchema },
+      { name: Order.name, schema: OrderSchema },
+    ]),
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -28,15 +31,7 @@ import { LoggerService } from '../common/services/logger.service';
     }),
   ],
   controllers: [UserController],
-  providers: [
-    UserService,
-    UserController,
-    JwtStrategy,
-    GoogleStrategy,
-    EmailService,
-    SmsService,
-    LoggerService,
-  ],
-  exports: [UserService, EmailService, SmsService],
+  providers: [UserService, JwtStrategy, GoogleStrategy],
+  exports: [UserService],
 })
 export class UserModule {}

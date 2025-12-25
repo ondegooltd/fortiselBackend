@@ -6,9 +6,10 @@ import { WebhookController } from './webhook.controller';
 import { PaystackService } from './paystack.service';
 import { Payment, PaymentSchema } from './payment.schema';
 import { EmailService } from '../common/services/email.service';
-import { SmsService } from '../common/services/sms.service';
 import { LoggerService } from '../common/services/logger.service';
 import { OrderModule } from '../order/order.module';
+import { TwilioSmsService } from 'src/common/services/twilio.sms.service';
+import { MnotifySmsService } from 'src/common/services/mnotify.sms.service';
 
 @Module({
   imports: [
@@ -20,7 +21,8 @@ import { OrderModule } from '../order/order.module';
     PaymentService,
     PaystackService,
     EmailService,
-    SmsService,
+    TwilioSmsService,
+    MnotifySmsService,
     LoggerService,
   ],
   exports: [PaymentService, PaystackService],

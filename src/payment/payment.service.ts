@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { UpdatePaymentDto } from './dto/update-payment.dto';
 import { Payment, PaymentDocument, PaymentStatus } from './payment.schema';
@@ -13,8 +13,17 @@ export class PaymentService {
 
   async create(createPaymentDto: CreatePaymentDto): Promise<Payment> {
     const paymentId = `PAY-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    // Convert orderId and userId strings to MongoDB ObjectIds
+    const orderId = new Types.ObjectId(createPaymentDto.orderId);
+    const userId = createPaymentDto.userId
+      ? new Types.ObjectId(createPaymentDto.userId)
+      : undefined;
+
     const createdPayment = new this.paymentModel({
       ...createPaymentDto,
+      orderId,
+      userId,
       paymentId,
       status: PaymentStatus.PENDING,
       createdAt: new Date(),

@@ -1,6 +1,7 @@
 export class Order {
   id: string;
   orderId: string;
+  userId: string;
   cylinderSize: string;
   quantity: number;
   refillAmount: number;

@@ -53,16 +53,30 @@ export class ResponseTransformInterceptor implements NestInterceptor {
         );
       }),
       catchError((error) => {
+        // If it's an HttpException (like BadRequestException from ValidationPipe),
+        // let it pass through to the exception filters instead of transforming it
+        // The exception filters will handle it properly
+        if (error instanceof HttpException) {
+          // Re-throw to let exception filters handle it
+          throw error;
+        }
+
+        // Log the raw error for debugging
         this.loggerService.logError(error, {
           requestId,
           type: 'response_transform_error',
+          errorType: error.constructor?.name,
+          hasGetResponse: typeof error.getResponse === 'function',
+          errorResponse: error.getResponse ? error.getResponse() : undefined,
         });
 
-        // Transform error responses
+        // Transform error responses for non-HttpException errors
         const errorResponse = this.transformError(error, request);
         throw new HttpException(
           errorResponse,
-          error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+          error.status ||
+            error.getStatus?.() ||
+            HttpStatus.INTERNAL_SERVER_ERROR,
         );
       }),
     );
@@ -92,10 +106,78 @@ export class ResponseTransformInterceptor implements NestInterceptor {
 
   private transformError(error: any, request: any): ErrorResponseDto {
     const requestId = (request as any).requestId;
-    const status = error.status || 500;
+    const status = error.status || error.getStatus?.() || 500;
     const message = error.message || 'Internal server error';
 
-    // Handle validation errors
+    // Handle HttpException (from NestJS ValidationPipe or other sources)
+    if (error instanceof HttpException || error.getResponse) {
+      const exceptionResponse = error.getResponse();
+
+      // Handle validation errors from ValidationPipe (BadRequestException)
+      if (
+        status === 400 &&
+        typeof exceptionResponse === 'object' &&
+        exceptionResponse !== null
+      ) {
+        const responseObj = exceptionResponse as any;
+
+        // Check if it's a validation error array (from ValidationPipe)
+        if (Array.isArray(responseObj.message)) {
+          const validationErrors = responseObj.message.map((err: any) => ({
+            field: err.property || 'unknown',
+            message: err.constraints
+              ? Object.values(err.constraints)[0]
+              : err.toString(),
+            value: err.value,
+          }));
+
+          return ErrorResponseDto.create(
+            'Validation failed',
+            'VALIDATION_ERROR',
+            validationErrors,
+            undefined,
+            requestId,
+            this.getApiVersion(request),
+          );
+        }
+
+        // Check for validationErrors property (from ValidationExceptionFilter)
+        if (responseObj.validationErrors) {
+          const validationErrors = responseObj.validationErrors.map(
+            (err: any) => ({
+              field: err.field || 'unknown',
+              message: err.constraints
+                ? err.constraints.join(', ')
+                : err.message || 'Validation error',
+              value: err.value,
+            }),
+          );
+
+          return ErrorResponseDto.create(
+            responseObj.message || 'Validation failed',
+            'VALIDATION_ERROR',
+            validationErrors,
+            undefined,
+            requestId,
+            this.getApiVersion(request),
+          );
+        }
+
+        // Check for violations (from BusinessRuleInterceptor)
+        if (responseObj.violations) {
+          return ErrorResponseDto.create(
+            responseObj.message || 'Business rule validation failed',
+            'BUSINESS_RULE_VIOLATION',
+            undefined,
+            responseObj.violations,
+            requestId,
+            this.getApiVersion(request),
+          );
+        }
+      }
+    }
+
+    // Handle validation errors from error.response (Axios-style)
     if (status === 400 && error.response) {
       const response = error.response;
       if (response.validationErrors) {

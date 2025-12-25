@@ -8,11 +8,12 @@ import {
 import { PaymentProvider, PaymentMethod } from '../payment.schema';
 
 export class CreatePaymentDto {
-  @IsMongoId()
-  orderId: string;
+  @IsString()
+  orderId: string; // Can be custom orderId (ORD-xxx) or MongoDB ObjectId - will be resolved to MongoDB _id in controller
 
   @IsMongoId()
-  userId: string;
+  @IsOptional()
+  userId?: string; // Optional - will be extracted from JWT token if not provided
 
   @IsNumber()
   amount: number;

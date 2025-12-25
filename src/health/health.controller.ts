@@ -3,6 +3,10 @@ import { ConfigService } from '@nestjs/config';
 import { InjectConnection } from '@nestjs/mongoose';
 import { Connection } from 'mongoose';
 import { LoggerService } from '../common/services/logger.service';
+import * as os from 'os';
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
+const diskusage = require('diskusage');
 
 export interface HealthCheckResult {
   status: 'healthy' | 'unhealthy';
@@ -148,16 +152,38 @@ export class HealthController {
   }
 
   private getDiskUsage(): { used: number; total: number; percentage: number } {
-    // Simplified disk usage calculation
-    // In production, you might want to use a library like 'diskusage'
-    const total = 100 * 1024 * 1024 * 1024; // 100GB (example)
-    const used = 50 * 1024 * 1024 * 1024; // 50GB (example)
-    const percentage = (used / total) * 100;
+    try {
+      // Get the root path (platform-specific)
+      const rootPath = os.platform() === 'win32' ? 'C:' : '/';
 
-    return {
-      used: Math.round(used / 1024 / 1024), // MB
-      total: Math.round(total / 1024 / 1024), // MB
-      percentage: Math.round(percentage),
-    };
+      // Get real disk usage
+      const stats = diskusage.checkSync(rootPath);
+      const total = stats.total;
+      const free = stats.available;
+      const used = total - free;
+      const percentage = (used / total) * 100;
+
+      return {
+        used: Math.round(used / 1024 / 1024), // MB
+        total: Math.round(total / 1024 / 1024), // MB
+        percentage: Math.round(percentage * 100) / 100, // Round to 2 decimal places
+      };
+    } catch (error) {
+      // Fallback to simplified calculation if diskusage fails
+      this.logger.logError(error as Error, {
+        type: 'disk_usage_error',
+      });
+
+      // Return default values
+      const total = 100 * 1024 * 1024 * 1024; // 100GB (fallback)
+      const used = 50 * 1024 * 1024 * 1024; // 50GB (fallback)
+      const percentage = (used / total) * 100;
+
+      return {
+        used: Math.round(used / 1024 / 1024), // MB
+        total: Math.round(total / 1024 / 1024), // MB
+        percentage: Math.round(percentage),
+      };
+    }
   }
 }

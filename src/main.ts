@@ -18,7 +18,6 @@ import { ValidationExceptionFilter } from './common/filters/validation-exception
 import { DatabaseExceptionFilter } from './common/filters/database-exception.filter';
 import { LoggerService } from './common/services/logger.service';
 import { ErrorMonitoringService } from './common/services/error-monitoring.service';
-import { ValidationException } from './common/exceptions/business.exception';
 import { ResponseTransformInterceptor } from './common/interceptors/response-transform.interceptor';
 import { TransactionInterceptor } from './common/interceptors/transaction.interceptor';
 import { BusinessRuleInterceptor } from './common/interceptors/business-rule.interceptor';
@@ -96,20 +95,12 @@ async function bootstrap() {
       transformOptions: {
         enableImplicitConversion: true,
       },
-      exceptionFactory: (errors) => {
-        const result = errors.map((error) => ({
-          property: error.property,
-          value: error.value,
-          constraints: error.constraints,
-          children: error.children,
-        }));
-        return new ValidationException('Validation failed', result);
-      },
     }),
   );
 
   // Set global prefix for all routes
-  // app.setGlobalPrefix(configService.get('apiPrefix') || 'api');
+  const apiPrefix = configService.get('apiPrefix') || 'api';
+  app.setGlobalPrefix(apiPrefix);
 
   // Swagger setup
   const config = new DocumentBuilder()
@@ -124,10 +115,9 @@ async function bootstrap() {
   const port = configService.get('port') || 3000;
   await app.listen(port);
 
-  // console.log(
-  //   `🚀 Application is running on: http://localhost:${port}/${configService.get('apiPrefix') || 'api'}`,
-  // );
-  console.log(`🚀 Application is running on: http://localhost:${port}`);
-  console.log(`📚 API Documentation: http://localhost:${port}`);
+  console.log(
+    `🚀 Application is running on: http://localhost:${port}/${apiPrefix}`,
+  );
+  console.log(`📚 API Documentation: http://localhost:${port}/${apiPrefix}`);
 }
 bootstrap();

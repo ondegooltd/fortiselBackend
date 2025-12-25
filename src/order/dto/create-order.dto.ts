@@ -4,7 +4,6 @@ import {
   IsOptional,
   IsEnum,
   IsDateString,
-  IsPhoneNumber,
   Min,
   Max,
   Length,
@@ -14,6 +13,7 @@ import {
   ValidateIf,
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
+import { CylinderSize } from '../../cylinder/cylinder.schema';
 
 export enum OrderStatus {
   PENDING = 'pending',
@@ -21,13 +21,6 @@ export enum OrderStatus {
   IN_PROGRESS = 'in_progress',
   DELIVERED = 'delivered',
   CANCELLED = 'cancelled',
-}
-
-export enum CylinderSize {
-  SMALL = '6kg',
-  MEDIUM = '12.5kg',
-  LARGE = '25kg',
-  EXTRA_LARGE = '50kg',
 }
 
 export enum PaymentMethod {
@@ -38,6 +31,10 @@ export enum PaymentMethod {
 }
 
 export class CreateOrderDto {
+  @IsString()
+  @IsOptional()
+  userId?: string;
+
   @IsString()
   @IsOptional()
   @Length(1, 50)
@@ -101,8 +98,12 @@ export class CreateOrderDto {
 
   @IsString()
   @IsOptional()
-  @IsPhoneNumber(undefined, {
-    message: 'Receiver phone must be a valid phone number',
+  @Length(10, 15, {
+    message: 'Receiver phone must be between 10 and 15 characters',
+  })
+  @Matches(/^[0-9+\-\s()]+$/, {
+    message:
+      'Receiver phone can only contain digits, +, -, spaces, and parentheses',
   })
   receiverPhone?: string;
 
@@ -119,10 +120,31 @@ export class CreateOrderDto {
   @IsOptional()
   status?: OrderStatus;
 
-  @IsDateString({}, { message: 'Scheduled date must be a valid date' })
   @IsOptional()
-  @ValidateIf((o) => o.scheduledDate !== undefined)
-  scheduledDate?: Date;
+  @ValidateIf(
+    (o) =>
+      o.scheduledDate !== undefined &&
+      o.scheduledDate !== null &&
+      o.scheduledDate !== '',
+  )
+  @Transform(({ value }) => {
+    // Convert YYYY-MM-DD to ISO date string format for validation
+    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      // Validate the date is valid
+      const date = new Date(value + 'T00:00:00.000Z');
+      if (isNaN(date.getTime())) {
+        return value; // Return original if invalid, let validator catch it
+      }
+      // Return as ISO string (YYYY-MM-DDTHH:mm:ss.sssZ)
+      return date.toISOString();
+    }
+    return value;
+  })
+  @IsDateString(
+    { strict: false },
+    { message: 'Scheduled date must be a valid date' },
+  )
+  scheduledDate?: string;
 
   @IsString()
   @IsOptional()

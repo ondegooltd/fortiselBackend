@@ -34,6 +34,16 @@ export class NotificationService {
     return this.notificationModel.find().exec();
   }
 
+  async findByUserId(userId: string): Promise<Notification[]> {
+    // Returns user-specific notifications and broadcast notifications (where userId is null/undefined)
+    return this.notificationModel
+      .find({
+        $or: [{ userId }, { userId: { $exists: false } }, { userId: null }],
+      })
+      .sort({ createdAt: -1 })
+      .exec();
+  }
+
   async findOne(id: string): Promise<Notification> {
     const notification = await this.notificationModel.findById(id).exec();
     if (!notification) {
@@ -60,5 +70,27 @@ export class NotificationService {
     if (!result) {
       throw new NotFoundException('Notification not found');
     }
+  }
+
+  async markAllAsRead(userId: string): Promise<{
+    success: boolean;
+    message: string;
+    updatedCount: number;
+  }> {
+    const result = await this.notificationModel
+      .updateMany(
+        {
+          $or: [{ userId }, { userId: { $exists: false } }, { userId: null }],
+          isRead: false,
+        },
+        { isRead: true, updatedAt: new Date() },
+      )
+      .exec();
+
+    return {
+      success: true,
+      message: 'All notifications marked as read',
+      updatedCount: result.modifiedCount,
+    };
   }
 }

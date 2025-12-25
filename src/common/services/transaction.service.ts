@@ -23,6 +23,15 @@ export interface TransactionResult<T> {
 @Injectable()
 export class TransactionService {
   private readonly logger = new Logger(TransactionService.name);
+  private activeSessions: Set<ClientSession> = new Set();
+  private transactionStats = {
+    totalTransactions: 0,
+    successfulTransactions: 0,
+    failedTransactions: 0,
+    totalRetries: 0,
+    averageDuration: 0,
+    durations: [] as number[],
+  };
 
   constructor(
     @InjectConnection() private readonly connection: Connection,
@@ -40,12 +49,21 @@ export class TransactionService {
     options: TransactionOptions = {},
   ): Promise<TransactionResult<T>> {
     const { timeout = 30000, retries = 3 } = options;
+    const startTime = Date.now();
+
+    // Update statistics
+    this.transactionStats.totalTransactions++;
 
     let lastError: Error | undefined;
     let session: ClientSession | undefined;
 
     for (let attempt = 1; attempt <= retries; attempt++) {
+      if (attempt > 1) {
+        this.transactionStats.totalRetries++;
+      }
+
       session = await this.connection.startSession();
+      this.activeSessions.add(session);
 
       try {
         this.loggerService.log(
@@ -69,8 +87,12 @@ export class TransactionService {
           },
         );
 
+        const duration = Date.now() - startTime;
+        this.recordSuccessfulTransaction(duration);
+
         this.loggerService.log('Transaction completed successfully', {
           attempt,
+          duration,
           type: 'transaction_success',
         });
 
@@ -89,14 +111,19 @@ export class TransactionService {
         });
 
         if (attempt === retries) {
+          const duration = Date.now() - startTime;
+          this.recordFailedTransaction(duration);
+
           this.loggerService.log('Transaction failed after all retries', {
             attempts: retries,
             error: lastError.message,
+            duration,
             type: 'transaction_failure',
           });
         }
       } finally {
         if (session) {
+          this.activeSessions.delete(session);
           await session.endSession();
         }
       }
@@ -209,14 +236,81 @@ export class TransactionService {
     totalTransactions: number;
     successfulTransactions: number;
     failedTransactions: number;
+    totalRetries: number;
+    averageDuration: number;
+    successRate: number;
+    failureRate: number;
   } {
-    // This is a simplified implementation
-    // In production, you might want to track these metrics more comprehensively
+    const successRate =
+      this.transactionStats.totalTransactions > 0
+        ? (this.transactionStats.successfulTransactions /
+            this.transactionStats.totalTransactions) *
+          100
+        : 0;
+
+    const failureRate =
+      this.transactionStats.totalTransactions > 0
+        ? (this.transactionStats.failedTransactions /
+            this.transactionStats.totalTransactions) *
+          100
+        : 0;
+
     return {
-      activeSessions: 0, // Would need to track active sessions
-      totalTransactions: 0, // Would need to track transaction counts
+      activeSessions: this.activeSessions.size,
+      totalTransactions: this.transactionStats.totalTransactions,
+      successfulTransactions: this.transactionStats.successfulTransactions,
+      failedTransactions: this.transactionStats.failedTransactions,
+      totalRetries: this.transactionStats.totalRetries,
+      averageDuration: Math.round(this.transactionStats.averageDuration),
+      successRate: Math.round(successRate * 100) / 100,
+      failureRate: Math.round(failureRate * 100) / 100,
+    };
+  }
+
+  /**
+   * Record a successful transaction
+   */
+  private recordSuccessfulTransaction(duration: number): void {
+    this.transactionStats.successfulTransactions++;
+    this.updateAverageDuration(duration);
+  }
+
+  /**
+   * Record a failed transaction
+   */
+  private recordFailedTransaction(duration: number): void {
+    this.transactionStats.failedTransactions++;
+    this.updateAverageDuration(duration);
+  }
+
+  /**
+   * Update average duration (keeping last 1000 durations for calculation)
+   */
+  private updateAverageDuration(duration: number): void {
+    this.transactionStats.durations.push(duration);
+
+    // Keep only last 1000 durations to prevent memory issues
+    if (this.transactionStats.durations.length > 1000) {
+      this.transactionStats.durations.shift();
+    }
+
+    // Calculate average
+    const sum = this.transactionStats.durations.reduce((acc, d) => acc + d, 0);
+    this.transactionStats.averageDuration =
+      sum / this.transactionStats.durations.length;
+  }
+
+  /**
+   * Reset transaction statistics
+   */
+  resetStats(): void {
+    this.transactionStats = {
+      totalTransactions: 0,
       successfulTransactions: 0,
       failedTransactions: 0,
+      totalRetries: 0,
+      averageDuration: 0,
+      durations: [],
     };
   }
 

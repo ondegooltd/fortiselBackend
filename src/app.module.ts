@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { OrderModule } from './order/order.module';
@@ -14,6 +15,9 @@ import { SupportTicketModule } from './support-ticket/support-ticket.module';
 import { NotificationModule } from './notification/notification.module';
 import { HealthModule } from './health/health.module';
 import { DatabaseModule } from './database/database.module';
+import { PaymentMethodModule } from './payment-method/payment-method.module';
+import { DeliveryAddressModule } from './delivery-address/delivery-address.module';
+import { TwoFactorAuthModule } from './two-factor-auth/two-factor-auth.module';
 import { LoggerService } from './common/services/logger.service';
 import { ErrorMonitoringService } from './common/services/error-monitoring.service';
 import { ErrorRecoveryService } from './common/services/error-recovery.service';
@@ -31,6 +35,9 @@ import configuration from './config/configuration';
       envFilePath: ['.env.local', '.env'],
       expandVariables: true,
     }),
+
+    // Schedule module for cron jobs
+    ScheduleModule.forRoot(),
 
     // Rate limiting configuration
     ThrottlerModule.forRootAsync({
@@ -82,6 +89,9 @@ import configuration from './config/configuration';
     NotificationModule,
     HealthModule,
     DatabaseModule,
+    PaymentMethodModule,
+    DeliveryAddressModule,
+    TwoFactorAuthModule,
     TransactionModule,
     ApiVersionModule,
   ],

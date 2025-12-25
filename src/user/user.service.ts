@@ -8,18 +8,50 @@ import { Model } from 'mongoose';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User, UserDocument, OtpDeliveryMethod } from './user.schema';
+import { Order, OrderDocument } from '../order/order.schema';
 import * as bcrypt from 'bcrypt';
-import { randomBytes } from 'crypto';
 import { EmailService } from '../common/services/email.service';
-import { SmsService } from '../common/services/sms.service';
+import { TwilioSmsService } from '../common/services/twilio.sms.service';
+import { MnotifySmsService } from '../common/services/mnotify.sms.service';
+import { LoggerService } from '../common/services/logger.service';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class UserService {
+  private smsProvider: string;
+  private otpSenderId: string;
+
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
     private emailService: EmailService,
-    private smsService: SmsService,
-  ) {}
+    // private smsService: TwilioSmsService | MnotifySmsService,
+    private twilioSmsService: TwilioSmsService,
+    private mnotifySmsService: MnotifySmsService,
+    private configService: ConfigService,
+    private logger: LoggerService,
+  ) {
+    const smsProvider = this.configService.get('sms.provider');
+    const otpSenderId = this.configService.get('sms.mnotify.otpSenderId');
+
+    if (!smsProvider) {
+      this.logger.warn('SMS provider is not configured', {
+        type: 'sms_provider_not_configured',
+      });
+      this.smsProvider = '';
+    } else if (smsProvider) {
+      this.smsProvider = smsProvider;
+    }
+
+    if (smsProvider === 'mnotify' && !otpSenderId) {
+      this.logger.warn('OTP sender ID is not configured', {
+        type: 'otp_sender_id_not_configured',
+      });
+      this.otpSenderId = '';
+    } else {
+      this.otpSenderId = otpSenderId;
+    }
+  }
 
   async create(createUserDto: CreateUserDto): Promise<User> {
     const { password, userId, ...rest } = createUserDto;
@@ -86,6 +118,41 @@ export class UserService {
     return user;
   }
 
+  async getProfileWithStats(id: string): Promise<any> {
+    // Since we're passing custom userId from JWT, use findOne with userId field
+    const user = await this.userModel
+      .findOne({ userId: id })
+      .select('-passwordHash')
+      .exec();
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Calculate real stats from orders
+    // Use the custom userId field for consistency
+    const orders = await this.orderModel.find({ userId: user.userId }).exec();
+
+    const totalOrders = orders.length;
+    const totalSpent = orders.reduce(
+      (sum, order) => sum + (order.totalAmount || 0),
+      0,
+    );
+
+    // Calculate average rating (for now, use a placeholder since we don't have rating system yet)
+    const completedOrders = orders.filter(
+      (order) => order.status === 'delivered' || order.status === 'confirmed',
+    );
+    const rating = completedOrders.length > 0 ? '4.8' : 'N/A'; // Placeholder rating
+
+    return {
+      ...user.toObject(),
+      totalOrders,
+      rating,
+      totalSpent,
+    };
+  }
+
   async findByEmail(email: string): Promise<User> {
     const user = await this.userModel.findOne({ email }).exec();
     if (!user) {
@@ -115,20 +182,16 @@ export class UserService {
   }
 
   async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
-    const { password, ...rest } = updateUserDto;
-    let passwordHash: string | undefined;
-    if (password) {
-      const saltRounds = 10;
-      passwordHash = await bcrypt.hash(password, saltRounds);
-    }
+    // Since we're passing custom userId from JWT, use findOneAndUpdate with userId field
     const updatedUser = await this.userModel
-      .findByIdAndUpdate(
-        id,
-        { ...rest, ...(passwordHash && { passwordHash }) },
+      .findOneAndUpdate(
+        { userId: id },
+        { ...updateUserDto, updatedAt: new Date() },
         { new: true },
       )
       .select('-passwordHash')
       .exec();
+
     if (!updatedUser) {
       throw new NotFoundException('User not found');
     }
@@ -173,10 +236,24 @@ export class UserService {
 
   // Send OTP via SMS using Twilio
   async sendOtpSms(phone: string, otp: string): Promise<void> {
+    let result: any;
     try {
-      const result = await this.smsService.sendOtpSms(phone, otp);
-      if (!result.success) {
-        throw new Error(`Failed to send OTP SMS: ${result.error}`);
+      if (this.smsProvider === 'twilio') {
+        result = await this.twilioSmsService.sendOtpSms(phone, otp);
+        if (!result.success) {
+          throw new Error(`Failed to send OTP SMS: ${result.error}`);
+        }
+      } else if (this.smsProvider === 'mnotify') {
+        result = await this.mnotifySmsService.send(
+          false,
+          '',
+          this.otpSenderId,
+          [phone],
+          otp,
+        );
+        if (!result.success) {
+          throw new Error(`Failed to send OTP SMS: ${result.error}`);
+        }
       }
     } catch (error) {
       console.error('Error sending OTP SMS:', error);

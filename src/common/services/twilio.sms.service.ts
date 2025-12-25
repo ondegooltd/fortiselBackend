@@ -10,7 +10,7 @@ export interface SmsOptions {
 }
 
 @Injectable()
-export class SmsService {
+export class TwilioSmsService {
   private twilio: Twilio | null;
   private readonly fromNumber: string;
 
@@ -18,6 +18,7 @@ export class SmsService {
     private configService: ConfigService,
     private logger: LoggerService,
   ) {
+    const smsProvider = this.configService.get('sms.provider');
     const accountSid = this.configService.get('sms.twilio.accountSid');
     const authToken = this.configService.get('sms.twilio.authToken');
     const phoneNumber = this.configService.get('sms.twilio.phoneNumber');
@@ -195,6 +196,22 @@ export class SmsService {
     return this.sendSms({
       to: phone,
       message,
+    });
+  }
+
+  /**
+   * Send payment failure SMS
+   */
+  async sendPaymentFailureSms(
+    phone: string,
+    paymentDetails: {
+      to: string;
+      message: string;
+    },
+  ): Promise<{ success: boolean; messageId?: string; error?: string }> {
+    return this.sendSms({
+      to: paymentDetails.to,
+      message: paymentDetails.message,
     });
   }
 

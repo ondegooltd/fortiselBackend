@@ -36,7 +36,13 @@ export class CreateUserDto {
 
   @IsString()
   @IsNotEmpty({ message: 'Phone number is required' })
-  @IsPhoneNumber(undefined, { message: 'Please provide a valid phone number' })
+  @Length(10, 15, {
+    message: 'Phone number must be between 10 and 15 characters',
+  })
+  @Matches(/^[0-9+\-\s()]+$/, {
+    message:
+      'Phone number can only contain digits, +, -, spaces, and parentheses',
+  })
   phone: string;
 
   @IsString()

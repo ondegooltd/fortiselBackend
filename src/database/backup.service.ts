@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '../common/services/logger.service';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs';
@@ -9,9 +10,11 @@ import * as path from 'path';
 const execAsync = promisify(exec);
 
 @Injectable()
-export class BackupService {
+export class BackupService implements OnModuleInit {
   private readonly backupDir: string;
   private readonly maxBackups: number;
+  private readonly backupEnabled: boolean;
+  private readonly backupSchedule: string;
 
   constructor(
     private configService: ConfigService,
@@ -22,10 +25,25 @@ export class BackupService {
       this.configService.get('database.maxBackups') || '10',
       10,
     );
+    this.backupEnabled =
+      this.configService.get('database.backupEnabled') !== 'false';
+    this.backupSchedule =
+      this.configService.get('database.backupSchedule') ||
+      CronExpression.EVERY_DAY_AT_2AM;
 
     // Ensure backup directory exists
     if (!fs.existsSync(this.backupDir)) {
       fs.mkdirSync(this.backupDir, { recursive: true });
+    }
+  }
+
+  async onModuleInit() {
+    if (this.backupEnabled) {
+      this.logger.log('Backup service initialized with scheduling enabled', {
+        schedule: this.backupSchedule,
+        maxBackups: this.maxBackups,
+        type: 'backup_init',
+      });
     }
   }
 
@@ -172,14 +190,44 @@ export class BackupService {
   }
 
   /**
-   * Schedule automatic backups
+   * Schedule automatic backups using cron
+   * Runs daily at 2 AM by default
+   * Note: To change the schedule, modify the @Cron decorator or use SchedulerRegistry
+   * Example cron expressions:
+   * - "0 2 * * *" for daily at 2 AM
+   * - "0 6 * * *" for every 6 hours
+   * - CronExpression.EVERY_DAY_AT_2AM (default)
+   */
+  @Cron(CronExpression.EVERY_DAY_AT_2AM)
+  async scheduledBackup(): Promise<void> {
+    if (!this.backupEnabled) {
+      return;
+    }
+
+    try {
+      this.logger.log('Starting scheduled backup', {
+        schedule: this.backupSchedule,
+        type: 'backup_scheduled_start',
+      });
+
+      const backupPath = await this.createBackup();
+
+      this.logger.log('Scheduled backup completed successfully', {
+        backupPath,
+        type: 'backup_scheduled_success',
+      });
+    } catch (error) {
+      this.logger.logError(error as Error, {
+        type: 'backup_scheduled_error',
+      });
+    }
+  }
+
+  /**
+   * Manually trigger a backup (for testing or manual operations)
    */
   async scheduleBackups(): Promise<void> {
-    // This would typically be implemented with a cron job or scheduler
-    // For now, we'll just log the intention
-    this.logger.log('Backup scheduling not implemented yet', {
-      type: 'backup_schedule',
-    });
+    await this.scheduledBackup();
   }
 
   private extractDatabaseName(uri: string): string {

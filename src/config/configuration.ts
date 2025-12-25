@@ -40,6 +40,9 @@ export default () => {
         process.env.MONGODB_SOCKET_TIMEOUT_MS || '45000',
         10,
       ),
+      maxBackups: parseInt(process.env.MAX_BACKUPS || '10', 10),
+      backupEnabled: process.env.BACKUP_ENABLED !== 'false',
+      backupSchedule: process.env.BACKUP_SCHEDULE || '0 2 * * *', // Daily at 2 AM
     },
 
     // JWT configuration
@@ -57,6 +60,9 @@ export default () => {
             'http://localhost:3000',
             'http://localhost:8081',
             'http://localhost:19006',
+            'http://192.168.100.33:3000',
+            'http://172.20.10.3:3000',
+            '*', // Allow all origins in development (remove in production)
           ],
     },
 
@@ -92,10 +98,17 @@ export default () => {
 
     // SMS service
     sms: {
+      provider: process.env.SMS_PROVIDER || 'mnotify',
       twilio: {
         accountSid: process.env.TWILIO_ACCOUNT_SID,
         authToken: process.env.TWILIO_AUTH_TOKEN,
         phoneNumber: process.env.TWILIO_PHONE_NUMBER,
+      },
+      mnotify: {
+        apiKey: process.env.MNOTIFY_API_KEY,
+        providerUrl: process.env.MNOTIFY_PROVIDER_URL,
+        smsSenderId: process.env.SMS_SENDER_ID,
+        otpSenderId: process.env.OTP_SENDER_ID,
       },
     },
 

@@ -3,10 +3,11 @@ import { ConfigService } from '@nestjs/config';
 import { PaymentService } from './payment.service';
 import { OrderService } from '../order/order.service';
 import { EmailService } from '../common/services/email.service';
-import { SmsService } from '../common/services/sms.service';
 import { createHmac } from 'crypto';
 import { PaymentStatus } from './payment.schema';
 import { OrderStatus } from 'src/order/order.schema';
+import { TwilioSmsService } from 'src/common/services/twilio.sms.service';
+import { MnotifySmsService } from 'src/common/services/mnotify.sms.service';
 
 export interface PaystackWebhookEvent {
   event: string;
@@ -70,19 +71,43 @@ export class PaystackService {
   private readonly logger = new Logger(PaystackService.name);
   private readonly secretKey: string;
   private readonly publicKey: string;
+  private smsProvider: string;
+  private otpSenderId: string;
 
   constructor(
     private configService: ConfigService,
     private paymentService: PaymentService,
     private orderService: OrderService,
     private emailService: EmailService,
-    private smsService: SmsService,
+    private twilioSmsService: TwilioSmsService,
+    private mnotifySmsService: MnotifySmsService,
   ) {
     this.secretKey = this.configService.get('payment.paystack.secretKey') || '';
     this.publicKey = this.configService.get('payment.paystack.publicKey') || '';
 
     if (!this.secretKey || !this.publicKey) {
       throw new Error('Paystack configuration is missing');
+    }
+
+    const smsProvider = this.configService.get('sms.provider');
+    const otpSenderId = this.configService.get('sms.mnotify.otpSenderId');
+
+    if (!smsProvider) {
+      this.logger.warn('SMS provider is not configured', {
+        type: 'sms_provider_not_configured',
+      });
+      this.smsProvider = '';
+    } else if (smsProvider) {
+      this.smsProvider = smsProvider;
+    }
+
+    if (smsProvider === 'mnotify' && !otpSenderId) {
+      this.logger.warn('OTP sender ID is not configured', {
+        type: 'otp_sender_id_not_configured',
+      });
+      this.otpSenderId = '';
+    } else {
+      this.otpSenderId = otpSenderId;
     }
   }
 
@@ -317,11 +342,24 @@ export class PaystackService {
 
       // Send SMS confirmation
       if (payment.userPhone) {
-        await this.smsService.sendPaymentConfirmationSms(payment.userPhone, {
-          orderId: payment.orderId,
-          amount: paystackData.amount / 100,
-          paymentMethod: paystackData.authorization?.channel || 'Card',
-        });
+        if (this.smsProvider === 'twilio') {
+          await this.twilioSmsService.sendPaymentConfirmationSms(
+            payment.userPhone,
+            {
+              orderId: payment.orderId,
+              amount: paystackData.amount / 100,
+              paymentMethod: paystackData.authorization?.channel || 'Card',
+            },
+          );
+        } else if (this.smsProvider === 'mnotify') {
+          await this.mnotifySmsService.send(
+            false,
+            '',
+            this.otpSenderId,
+            [payment.userPhone],
+            `Payment confirmed for order ${payment.orderId}. Amount: ${paystackData.amount / 100}. Payment method: ${paystackData.authorization?.channel || 'Card'}.`,
+          );
+        }
       }
     } catch (error) {
       this.logger.error(
@@ -355,10 +393,20 @@ export class PaystackService {
 
       // Send SMS notification
       if (payment.userPhone) {
-        await this.smsService.sendSms({
-          to: payment.userPhone,
-          message: `Payment failed for order ${payment.orderId}. Reason: ${paystackData.gateway_response}. Please try again.`,
-        });
+        if (this.smsProvider === 'twilio') {
+          await this.twilioSmsService.sendPaymentFailureSms(payment.userPhone, {
+            to: payment.userPhone,
+            message: `Payment failed for order ${payment.orderId}. Reason: ${paystackData.gateway_response}. Please try again.`,
+          });
+        } else if (this.smsProvider === 'mnotify') {
+          await this.mnotifySmsService.send(
+            false,
+            '',
+            this.otpSenderId,
+            [payment.userPhone],
+            `Payment failed for order ${payment.orderId}. Reason: ${paystackData.gateway_response}. Please try again.`,
+          );
+        }
       }
     } catch (error) {
       this.logger.error('Error sending payment failure notification:', error);

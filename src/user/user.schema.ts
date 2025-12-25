@@ -71,6 +71,9 @@ export class User extends Document {
   })
   otpDeliveryMethod?: OtpDeliveryMethod;
 
+  @Prop()
+  address?: string;
+
   @Prop({ default: Date.now })
   createdAt: Date;
 

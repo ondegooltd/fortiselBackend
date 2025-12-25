@@ -174,7 +174,7 @@ export class UserController {
   }
 
   @Post('request-otp')
-  @Throttle({ short: { limit: 3, ttl: 300000 } }) // 3 OTP requests per 5 minutes
+  @Throttle({ short: { limit: 5, ttl: 300000 } }) // 3 OTP requests per 5 minutes
   async requestOtp(@Body(new ValidationPipe()) body: RequestOtpDto) {
     const { email, phone, otpDeliveryMethod } = body;
     if (!email && !phone) {
@@ -232,6 +232,19 @@ export class UserController {
     return this.userService.findAll();
   }
 
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  async getProfile(@Request() req) {
+    // Use userId from JWT payload for consistency
+    return this.userService.getProfileWithStats(req.user.userId);
+  }
+
+  @Patch('me')
+  @UseGuards(JwtAuthGuard)
+  updateProfile(@Request() req, @Body() updateUserDto: UpdateUserDto) {
+    return this.userService.update(req.user.userId, updateUserDto);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.userService.findOne(id);
@@ -245,12 +258,6 @@ export class UserController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.userService.remove(id);
-  }
-
-  @Get('me')
-  @UseGuards(JwtAuthGuard)
-  getProfile(@Request() req) {
-    return req.user;
   }
 
   @Get('auth/google')
